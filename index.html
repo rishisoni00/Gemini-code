@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>seeti code studio</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0d1117" />
+  
+  <!-- Tailwind CSS & FontAwesome Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- CodeMirror 6 Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/one-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
+
+  <!-- Dexie.js (IndexedDB Engine) & JSZip & QR Code API -->
+  <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
+  <!-- Pyodide WASM Engine for Offline Python -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+  
+  <!-- Puter.js SDK for Free Dev AI -->
+  <script src="https://js.puter.com/v2/"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-[#0d1117] text-gray-200 font-sans antialiased overflow-hidden select-none">
+
+  <!-- Main Container with Safe Dynamic Viewport -->
+  <div class="h-[100dvh] flex flex-col justify-between pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+
+    <!-- Top Optimized Header Bar -->
+    <header class="h-12 bg-[#161b22] border-b border-gray-800 flex items-center justify-between px-3 shrink-0">
+      <div class="flex items-center space-x-2">
+        <div class="w-7 h-7 bg-gradient-to-tr from-purple-600 to-indigo-500 rounded-lg flex items-center justify-center shadow-lg">
+          <i class="fa-solid fa-code text-white text-xs"></i>
+        </div>
+        <span class="font-bold text-sm tracking-wider text-white">seeti <span class="text-xs text-purple-400 font-normal">studio</span></span>
+      </div>
+
+      <!-- Icon-Only Responsive Actions -->
+      <div class="flex items-center space-x-1 sm:space-x-2">
+        <button id="projectsBtn" title="Project Manager" class="p-2 hover:bg-gray-800 text-gray-300 hover:text-purple-400 rounded-md transition text-xs flex items-center gap-1">
+          <i class="fa-solid fa-folder-open"></i> <span class="hidden sm:inline">Projects</span>
+        </button>
+        <button id="saveBtn" title="Save Project" class="p-2 hover:bg-gray-800 text-gray-300 hover:text-green-400 rounded-md transition text-xs flex items-center gap-1">
+          <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Save</span>
+        </button>
+        <button id="qrBtn" title="QR Local Preview" class="p-2 hover:bg-gray-800 text-gray-300 hover:text-cyan-400 rounded-md transition text-xs flex items-center gap-1">
+          <i class="fa-solid fa-qrcode"></i> <span class="hidden sm:inline">QR</span>
+        </button>
+        <button id="exportZipBtn" title="Export ZIP" class="p-2 hover:bg-gray-800 text-gray-300 hover:text-blue-400 rounded-md transition text-xs flex items-center gap-1">
+          <i class="fa-solid fa-file-zipper"></i> <span class="hidden sm:inline">ZIP</span>
+        </button>
+        <button id="aiFixBtn" title="Dev AI Auto-Fix" class="p-2 bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 rounded-md transition text-xs border border-purple-500/30 flex items-center gap-1">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> <span class="hidden sm:inline">AI Fix</span>
+        </button>
+        <button id="runBtn" title="Run Code" class="p-2 bg-emerald-600 text-white hover:bg-emerald-500 rounded-md transition text-xs font-semibold flex items-center gap-1">
+          <i class="fa-solid fa-play"></i> <span class="hidden sm:inline">Run</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Code Editor & Preview Workspace -->
+    <main class="flex-1 relative overflow-hidden flex flex-col">
+      
+      <!-- File Selector Tabs -->
+      <div class="h-9 bg-[#161b22] border-b border-gray-800 flex items-center px-2 space-x-1 shrink-0 overflow-x-auto no-scrollbar">
+        <button class="file-tab active-tab" data-file="index.html"><i class="fa-brands fa-html5 text-orange-500 mr-1"></i>index.html</button>
+        <button class="file-tab text-gray-400 hover:text-gray-200" data-file="styles.css"><i class="fa-brands fa-css3-alt text-blue-500 mr-1"></i>styles.css</button>
+        <button class="file-tab text-gray-400 hover:text-gray-200" data-file="app.js"><i class="fa-brands fa-js text-yellow-400 mr-1"></i>app.js</button>
+        <button class="file-tab text-gray-400 hover:text-gray-200" data-file="main.py"><i class="fa-brands fa-python text-blue-400 mr-1"></i>main.py</button>
+      </div>
+
+      <!-- Editor Window (CodeMirror Container) -->
+      <div id="editorContainer" class="flex-1 w-full h-full relative"></div>
+
+      <!-- Live Preview & Integrated Terminal Window -->
+      <div id="previewContainer" class="hidden flex-1 w-full h-full bg-white relative flex-col">
+        <iframe id="previewFrame" class="w-full flex-1 border-none bg-white"></iframe>
+        
+        <!-- Mobile In-App Terminal Interceptor -->
+        <div id="terminalPanel" class="h-32 bg-[#0d1117] border-t border-gray-800 text-xs font-mono p-2 overflow-y-auto flex flex-col justify-end">
+          <div class="flex items-center justify-between text-gray-400 border-b border-gray-800 pb-1 mb-1 shrink-0">
+            <span><i class="fa-solid fa-terminal mr-1"></i>Console Terminal</span>
+            <button id="clearTerminal" class="text-xs hover:text-white"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+          <div id="terminalOutput" class="space-y-0.5 overflow-y-auto flex-1"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Line & Status Info Bar -->
+    <div class="h-6 bg-[#0d1117] border-t border-gray-800/80 flex items-center justify-between px-3 text-[10px] text-gray-400 shrink-0 font-mono">
+      <span id="cursorPos">Ln 1, Col 1</span>
+      <span id="activeEngine">HTML/JS Engine</span>
+    </div>
+
+    <!-- Dynamic Symbol Bar (Context-Aware) -->
+    <div id="symbolBar" class="h-9 bg-[#161b22] border-t border-gray-800 flex items-center px-2 space-x-1 overflow-x-auto no-scrollbar shrink-0">
+      <!-- Symbols dynamically loaded from app.js -->
+    </div>
+
+    <!-- Mobile View Switcher Footer -->
+    <footer class="h-11 bg-[#161b22] border-t border-gray-800 flex items-center justify-around px-4 shrink-0">
+      <button id="showEditorBtn" class="flex-1 py-1 text-center font-medium text-xs text-purple-400 border-b-2 border-purple-500">
+        <i class="fa-solid fa-code mr-1"></i> Editor
+      </button>
+      <button id="showPreviewBtn" class="flex-1 py-1 text-center font-medium text-xs text-gray-400 hover:text-gray-200">
+        <i class="fa-solid fa-eye mr-1"></i> Preview
+      </button>
+    </footer>
+
+  </div>
+
+  <!-- Multi-Project Manager Modal -->
+  <div id="projectModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-gray-800 rounded-xl w-full max-w-md p-4 text-gray-200 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-800 pb-2 mb-3">
+        <h3 class="font-bold text-sm text-white"><i class="fa-solid fa-folder-tree text-purple-400 mr-2"></i>Project Manager</h3>
+        <button id="closeProjectModal" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="flex gap-2 mb-4">
+        <input id="newProjectName" type="text" placeholder="New project name..." class="flex-1 bg-[#0d1117] border border-gray-700 rounded px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500" />
+        <button id="createProjectBtn" class="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-1.5 rounded font-medium">Create</button>
+      </div>
+      <div id="projectList" class="max-h-52 overflow-y-auto space-y-1.5"></div>
+    </div>
+  </div>
+
+  <!-- QR Code Share Modal -->
+  <div id="qrModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-[#161b22] border border-gray-800 rounded-xl p-5 text-center text-gray-200 shadow-2xl flex flex-col items-center">
+      <h3 class="font-bold text-sm text-white mb-3"><i class="fa-solid fa-qrcode text-cyan-400 mr-2"></i>Local QR Share</h3>
+      <div id="qrcode" class="p-2 bg-white rounded-lg mb-3"></div>
+      <p class="text-[11px] text-gray-400 mb-4">Scan using any device on same network</p>
+      <button id="closeQrModal" class="bg-gray-800 hover:bg-gray-700 text-xs px-4 py-1.5 rounded text-white">Close</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+    </html>
