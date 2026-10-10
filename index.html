@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Seeti Code Studio - Mobile IDE</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Seeti%20Code%20Studio%22,%22short_name%22:%22SeetiStudio%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f172a%22,%22theme_color%22:%22%230f172a%22}">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              bg: '#0f172a',
+              card: '#1e293b',
+              border: '#334155'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- CodeMirror 5 CSS & Dependencies -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* CodeMirror Custom Styling */
+    .CodeMirror {
+      height: 100% !important;
+      font-family: 'Fira Code', monospace, monospace;
+      font-size: 14px;
+      background-color: #0f172a !important;
+      color: #f8fafc !important;
+    }
+    .CodeMirror-gutters {
+      background-color: #1e293b !important;
+      border-right: 1px solid #334155 !important;
+    }
+    .CodeMirror-linenumber {
+      color: #64748b !important;
+    }
+
+    /* Safe Area Padding for Mobile Notch / Navigation Bar */
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 12px);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen overflow-hidden flex flex-col font-sans select-none">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="bg-slate-900 border-b border-slate-800 px-3 py-2 flex items-center justify-between z-30 shrink-0">
+    <!-- Left Logo & Storage Badge -->
+    <div class="flex items-center space-x-2 min-w-0">
+      <button id="menu-btn" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 focus:outline-none" title="Toggle File Explorer">
+        <i class="fa-solid fa-bars text-lg"></i>
+      </button>
+      <div class="flex items-center space-x-2 truncate">
+        <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm border border-emerald-500/30">
+          ⚡
+        </div>
+        <span class="font-bold text-base tracking-tight text-white truncate">Seeti <span class="text-emerald-400 hidden sm:inline">Studio</span></span>
+      </div>
+
+      <!-- Storage Indicator Switcher Badge -->
+      <button id="storage-mode-btn" onclick="openStorageHub()" class="flex items-center space-x-1.5 px-2 py-1 rounded-full text-xs font-medium border bg-slate-800 border-slate-700 text-slate-300 hover:border-emerald-500/50 transition">
+        <span id="storage-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="storage-label" class="hidden xs:inline">Local</span>
+      </button>
+    </div>
+
+    <!-- Right Header Action Controls -->
+    <div class="flex items-center space-x-1.5">
+      <!-- Run Button -->
+      <button onclick="runCode()" class="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-medium text-xs shadow-lg shadow-emerald-900/30 transition active:scale-95">
+        <i class="fa-solid fa-play text-xs"></i>
+        <span>Run</span>
+      </button>
+
+      <!-- AI Copilot Button -->
+      <button onclick="toggleAIPanel()" class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg font-medium text-xs shadow-lg shadow-indigo-900/30 transition active:scale-95">
+        <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
+        <span class="hidden sm:inline">AI</span>
+      </button>
+
+      <!-- Desktop Quick Tools -->
+      <div class="hidden md:flex items-center space-x-1 border-l border-slate-800 pl-2">
+        <button onclick="openStorageHub()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800" title="Storage Hub">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </button>
+        <button onclick="exportProject()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800" title="Export Zip">
+          <i class="fa-solid fa-download"></i>
+        </button>
+        <button onclick="openSettingsModal()" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800" title="Settings">
+          <i class="fa-solid fa-gear"></i>
+        </button>
+      </div>
+
+      <!-- Mobile Overflow Dropdown Menu Button -->
+      <button id="overflow-btn" onclick="toggleOverflowMenu()" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">
+        <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Context / Overflow Menu Dropdown -->
+  <div id="overflow-menu" class="hidden fixed top-12 right-3 z-50 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-2 w-48 backdrop-blur-md">
+    <button onclick="openStorageHub(); toggleOverflowMenu()" class="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-slate-800 flex items-center space-x-2">
+      <i class="fa-solid fa-database w-4 text-emerald-400"></i>
+      <span>Storage & Cloud</span>
+    </button>
+    <button onclick="exportProject(); toggleOverflowMenu()" class="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-slate-800 flex items-center space-x-2">
+      <i class="fa-solid fa-download w-4 text-blue-400"></i>
+      <span>Export Files</span>
+    </button>
+    <button onclick="openSettingsModal(); toggleOverflowMenu()" class="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-slate-800 flex items-center space-x-2">
+      <i class="fa-solid fa-gear w-4 text-amber-400"></i>
+      <span>Settings</span>
+    </button>
+    <div class="border-t border-slate-800 my-1"></div>
+    <button id="pwa-install-menu-btn" onclick="installPWA(); toggleOverflowMenu()" class="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-slate-800 flex items-center space-x-2">
+      <i class="fa-solid fa-mobile-screen-button w-4 text-purple-400"></i>
+      <span>Install App (PWA)</span>
+    </button>
+  </div>
+
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- FILE EXPLORER SIDEBAR OVERLAY / DRAWER -->
+    <aside id="sidebar" class="absolute inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
+      <!-- Sidebar Header -->
+      <div class="p-3 border-b border-slate-800 flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Workspace Files</span>
+        <div class="flex items-center space-x-1">
+          <button onclick="createNewFile()" class="p-1 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded" title="New File">
+            <i class="fa-solid fa-file-circle-plus text-xs"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- File List -->
+      <div id="file-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+        <!-- Dynamically rendered file tabs -->
+      </div>
+
+      <!-- Sidebar Footer (PWA & System Status) -->
+      <div class="p-3 border-t border-slate-800 bg-slate-950/50 space-y-2">
+        <button id="sidebar-pwa-btn" onclick="installPWA()" class="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg flex items-center justify-center space-x-2 border border-slate-700 transition">
+          <i class="fa-solid fa-download text-emerald-400"></i>
+          <span>Install Native App</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- BACKDROP FOR MOBILE SIDEBAR -->
+    <div id="sidebar-backdrop" onclick="toggleSidebar(false)" class="hidden fixed inset-0 bg-slate-950/60 z-30 backdrop-blur-sm md:hidden"></div>
+
+    <!-- MAIN EDITOR & PREVIEW CONTAINER -->
+    <main class="flex-1 flex flex-col md:flex-row md:pl-64 overflow-hidden w-full relative">
+
+      <!-- EDITOR PANEL -->
+      <section id="editor-panel" class="flex-1 flex flex-col h-full overflow-hidden border-r border-slate-800 bg-slate-950">
+        
+        <!-- File Tabs Header -->
+        <div id="tabs-header" class="flex items-center bg-slate-900 border-b border-slate-800 overflow-x-auto scrollbar-none px-2 space-x-1 shrink-0 h-10">
+          <!-- Rendered Active Open Tabs -->
+        </div>
+
+        <!-- Touch Quick-Keys Toolbar (Mobile Developer Helpers) -->
+        <div class="flex items-center space-x-1 overflow-x-auto bg-slate-900/80 px-2 py-1 border-b border-slate-800 scrollbar-none shrink-0 text-xs text-slate-300">
+          <button onclick="insertSnippet('{ }')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">{ }</button>
+          <button onclick="insertSnippet('()')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">( )</button>
+          <button onclick="insertSnippet('< >')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">&lt; &gt;</button>
+          <button onclick="insertSnippet('=>')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">=&gt;</button>
+          <button onclick="insertSnippet(';')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">;</button>
+          <button onclick="insertSnippet('=&quot;&quot;')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">=""</button>
+          <button onclick="insertSnippet('const ')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">const</button>
+          <button onclick="insertSnippet('console.log()')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded font-mono">log</button>
+          <button onclick="formatActiveFile()" class="ml-auto px-2 py-1 bg-emerald-900/40 text-emerald-400 border border-emerald-500/30 rounded flex items-center space-x-1 text-2xs">
+            <i class="fa-solid fa-wand-magic"></i>
+            <span>Format</span>
+          </button>
+        </div>
+
+        <!-- Editor Area Container -->
+        <div class="flex-1 relative overflow-hidden">
+          <textarea id="code-textarea" class="w-full h-full opacity-0"></textarea>
+        </div>
+      </section>
+
+      <!-- RESIZABLE DIVIDER (DESKTOP) -->
+      <div id="resizer" class="hidden md:block w-1 bg-slate-800 hover:bg-emerald-500 cursor-col-resize transition-colors"></div>
+
+      <!-- PREVIEW & CONSOLE PANEL -->
+      <section id="preview-panel" class="hidden md:flex flex-1 flex-col h-full overflow-hidden bg-slate-900">
+        <!-- Preview Bar -->
+        <div class="p-2 bg-slate-900 border-b border-slate-800 flex items-center justify-between shrink-0">
+          <div class="flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-semibold text-slate-300">Live Preview</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <button onclick="clearConsole()" class="px-2 py-1 text-2xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded" title="Clear Console">
+              <i class="fa-solid fa-ban"></i>
+            </button>
+            <button onclick="reloadPreview()" class="px-2 py-1 text-2xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded" title="Reload Frame">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Preview iFrame Frame -->
+        <div class="flex-1 bg-white relative">
+          <iframe id="preview-frame" class="w-full h-full border-0"></iframe>
+        </div>
+
+        <!-- Embedded Terminal / Console Drawer -->
+        <div id="console-drawer" class="h-32 bg-slate-950 border-t border-slate-800 flex flex-col shrink-0">
+          <div class="px-3 py-1 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-2xs text-slate-400">
+            <span class="font-mono uppercase tracking-wider font-semibold">Console Logs</span>
+            <span id="log-count" class="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">0 logs</span>
+          </div>
+          <div id="console-output" class="flex-1 overflow-y-auto p-2 font-mono text-xs space-y-1">
+            <!-- Intercepted console.log outputs -->
+            <div class="text-slate-500 italic text-2xs">Console initialized. Ready for outputs...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI COPILOT FLOATING DRAWER PANEL -->
+      <aside id="ai-panel" class="hidden absolute top-0 right-0 z-40 w-full sm:w-80 h-full bg-slate-900 border-l border-slate-800 flex flex-col shadow-2xl backdrop-blur-lg">
+        <div class="p-3 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+            <span class="text-xs font-bold text-slate-200 uppercase tracking-wider">Seeti AI Copilot</span>
+          </div>
+          <button onclick="toggleAIPanel(false)" class="text-slate-400 hover:text-white p-1">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div id="ai-messages" class="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
+          <div class="bg-indigo-950/40 border border-indigo-800/40 p-3 rounded-xl text-slate-300 space-y-1">
+            <p class="font-semibold text-indigo-300">Hello Developer! 👋</p>
+            <p>How can I assist your code today? Ask for HTML structures, CSS styling, or JavaScript functions.</p>
+          </div>
+        </div>
+
+        <div class="p-3 border-t border-slate-800 bg-slate-950">
+          <form onsubmit="handleAISubmit(event)" class="flex items-center space-x-2">
+            <input id="ai-input" type="text" placeholder="e.g., Create a responsive navbar..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-indigo-500">
+            <button type="submit" class="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">
+              <i class="fa-solid fa-paper-plane text-xs"></i>
+            </button>
+          </form>
+        </div>
+      </aside>
+
+    </main>
+  </div>
+
+  <!-- ==================== MOBILE BOTTOM VIEW MODE SWITCHER ==================== -->
+  <nav class="md:hidden bg-slate-900 border-t border-slate-800 flex items-center justify-around py-2 px-1 z-30 shrink-0 pb-safe">
+    <button onclick="switchMobileView('editor')" id="nav-btn-editor" class="flex flex-col items-center space-y-1 text-emerald-400 text-xs">
+      <i class="fa-solid fa-code text-base"></i>
+      <span>Code</span>
+    </button>
+    <button onclick="switchMobileView('split')" id="nav-btn-split" class="flex flex-col items-center space-y-1 text-slate-400 text-xs">
+      <i class="fa-solid fa-table-columns text-base"></i>
+      <span>Split</span>
+    </button>
+    <button onclick="switchMobileView('preview')" id="nav-btn-preview" class="flex flex-col items-center space-y-1 text-slate-400 text-xs">
+      <i class="fa-solid fa-eye text-base"></i>
+      <span>Preview</span>
+    </button>
+    <button onclick="toggleSidebar(true)" id="nav-btn-files" class="flex flex-col items-center space-y-1 text-slate-400 text-xs">
+      <i class="fa-solid fa-folder text-base"></i>
+      <span>Files</span>
+    </button>
+  </nav>
+
+  <!-- ==================== STORAGE & CLOUD HUB MODAL ==================== -->
+  <div id="storage-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-database text-emerald-400"></i>
+          <h3 class="text-sm font-bold text-white">Storage Provider & Cloud Hub</h3>
+        </div>
+        <button onclick="closeStorageHub()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Mode Selector Cards -->
+      <div class="grid grid-cols-2 gap-3">
+        <div id="mode-card-local" onclick="setStorageMode('local')" class="p-3 border rounded-xl cursor-pointer transition bg-slate-800 border-emerald-500/50 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-emerald-400">Local Storage</span>
+            <i class="fa-solid fa-hard-drive text-xs text-slate-400"></i>
+          </div>
+          <p class="text-2xs text-slate-400">Offline high-speed saving directly inside browser memory.</p>
+        </div>
+
+        <div id="mode-card-cloud" onclick="setStorageMode('cloud')" class="p-3 border rounded-xl cursor-pointer transition bg-slate-950 border-slate-800 hover:border-slate-700 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-400">Cloud Sync</span>
+            <i class="fa-solid fa-cloud text-xs text-slate-400"></i>
+          </div>
+          <p class="text-2xs text-slate-400">Cross-device remote backup and instant project sharing.</p>
+        </div>
+      </div>
+
+      <!-- Cloud Status / Actions -->
+      <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400">Sync Status:</span>
+          <span id="sync-status-badge" class="text-emerald-400 font-semibold">Local Up-To-Date</span>
+        </div>
+        <div class="flex space-x-2 pt-1">
+          <button onclick="triggerCloudPush()" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium transition">
+            Push to Cloud
+          </button>
+          <button onclick="triggerCloudPull()" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition">
+            Pull Sync
+          </button>
+        </div>
+      </div>
+
+      <button onclick="closeStorageHub()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-medium">
+        Done
+      </button>
+    </div>
+  </div>
+
+  <!-- CodeMirror 5 Script Imports -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+
+  <!-- JSZip Script for Project Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- ==================== APPLICATION CORE JAVASCRIPT ==================== -->
+  <script>
+    // Initial Virtual File System
+    let files = {
+      'index.html': {
+        name: 'index.html',
+        type: 'html',
+        content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>Seeti Studio</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <div class="container">\n    <h1>⚡ Welcome to Seeti Code Studio</h1>\n    <p>Mobile-Optimized IDE & Live Web Sandbox</p>\n    <button id="btn">Click Me!</button>\n  </div>\n  <script src="script.js"><\/script>\n</body>\n</html>`
+      },
+      'style.css': {
+        name: 'style.css',
+        type: 'css',
+        content: `body {\n  background: #0f172a;\n  color: #f8fafc;\n  font-family: system-ui, sans-serif;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  margin: 0;\n}\n.container {\n  text-align: center;\n  padding: 2rem;\n  background: #1e293b;\n  border-radius: 12px;\n  border: 1px solid #334155;\n}\nh1 { color: #22c55e; margin-top: 0; }\nbutton {\n  background: #22c55e;\n  color: white;\n  border: none;\n  padding: 8px 16px;\n  border-radius: 6px;\n  cursor: pointer;\n}`
+      },
+      'script.js': {
+        name: 'script.js',
+        type: 'js',
+        content: `document.getElementById('btn').addEventListener('click', () => {\n  console.log('Button clicked at ' + new Date().toLocaleTimeString());\n  alert('Hello from Seeti Code Studio!');\n});`
+      }
+    };
+
+    let activeFile = 'index.html';
+    let editorInstance = null;
+    let storageMode = 'local'; // 'local' | 'cloud'
+    let deferredPrompt = null;
+
+    /* Initialize Application */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedWorkspace();
+      initCodeMirror();
+      renderFileList();
+      renderTabs();
+      runCode();
+      setupPWA();
+    });
+
+    /* CodeMirror Initialization */
+    function initCodeMirror() {
+      const textarea = document.getElementById('code-textarea');
+      editorInstance = CodeMirror.fromTextArea(textarea, {
+        lineNumbers: true,
+        theme: 'dracula',
+        mode: 'htmlmixed',
+        tabSize: 2,
+        indentUnit: 2,
+        lineWrapping: true,
+        viewportMargin: Infinity
+      });
+
+      editorInstance.setValue(files[activeFile].content);
+
+      editorInstance.on('change', () => {
+        files[activeFile].content = editorInstance.getValue();
+        saveToStorage();
+      });
+    }
+
+    /* Set Active File */
+    function setActiveFile(filename) {
+      if (!files[filename]) return;
+      activeFile = filename;
+
+      // Determine Mode
+      let mode = 'htmlmixed';
+      if (filename.endsWith('.css')) mode = 'css';
+      if (filename.endsWith('.js')) mode = 'javascript';
+
+      editorInstance.setOption('mode', mode);
+      editorInstance.setValue(files[filename].content);
+
+      renderFileList();
+      renderTabs();
+    }
+
+    /* Switch Mobile View Layout Modes */
+    function switchMobileView(mode) {
+      const editorPanel = document.getElementById('editor-panel');
+      const previewPanel = document.getElementById('preview-panel');
+
+      // Reset Active Nav Button Styles
+      ['editor', 'split', 'preview'].forEach(m => {
+        const btn = document.getElementById(`nav-btn-${m}`);
+        if (btn) btn.className = 'flex flex-col items-center space-y-1 text-slate-400 text-xs';
+      });
+
+      const activeBtn = document.getElementById(`nav-btn-${mode}`);
+      if (activeBtn) activeBtn.className = 'flex flex-col items-center space-y-1 text-emerald-400 text-xs';
+
+      if (mode === 'editor') {
+        editorPanel.classList.remove('hidden');
+        previewPanel.classList.add('hidden');
+      } else if (mode === 'preview') {
+        editorPanel.classList.add('hidden');
+        previewPanel.classList.remove('hidden');
+        previewPanel.classList.add('flex');
+        runCode();
+      } else if (mode === 'split') {
+        editorPanel.classList.remove('hidden');
+        previewPanel.classList.remove('hidden');
+        previewPanel.classList.add('flex');
+        runCode();
+      }
+    }
+
+    /* Insert Code Helpers Toolbar */
+    function insertSnippet(text) {
+      if (!editorInstance) return;
+      const doc = editorInstance.getDoc();
+      const cursor = doc.getCursor();
+      doc.replaceRange(text, cursor);
+      editorInstance.focus();
+    }
+
+    /* Live Preview & Console Output Interceptor Execution */
+    function runCode() {
+      const iframe = document.getElementById('preview-frame');
+      const html = files['index.html'] ? files['index.html'].content : '';
+      const css = files['style.css'] ? files['style.css'].content : '';
+      const js = files['script.js'] ? files['script.js'].content : '';
+
+      // Console log interception script
+      const consoleScript = `
+        <script>
+          (function() {
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+
+            function sendToHost(type, args) {
+              window.parent.postMessage({
+                type: 'CONSOLE_LOG',
+                logType: type,
+                message: Array.from(args).map(a => typeof a === 'object' ? JSON.stringify(a) : a).join(' ')
+              }, '*');
+            }
+
+            console.log = function(...args) { sendToHost('log', args); originalLog.apply(console, args); };
+            console.error = function(...args) { sendToHost('error', args); originalError.apply(console, args); };
+            console.warn = function(...args) { sendToHost('warn', args); originalWarn.apply(console, args); };
+          })();
+        <\/script>
+      `;
+
+      const source = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>${css}</style>${consoleScript}
+        </head>
+        <body>
+          ${html}
+          <script>${js}<\/script>
+        </body>
+        </html>
+      `;
+
+      iframe.srcdoc = source;
+    }
+
+    /* Listen for Console Logs from Frame */
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'CONSOLE_LOG') {
+        appendConsoleOutput(event.data.logType, event.data.message);
+      }
+    });
+
+    function appendConsoleOutput(type, message) {
+      const consoleOutput = document.getElementById('console-output');
+      const logCount = document.getElementById('log-count');
+      
+      const item = document.createElement('div');
+      item.className = `py-0.5 border-b border-slate-900 font-mono text-2xs ${
+        type === 'error' ? 'text-red-400' : type === 'warn' ? 'text-amber-400' : 'text-slate-300'
+      }`;
+      item.textContent = `[${new Date().toLocaleTimeString()}]${message}`;
+      
+      consoleOutput.appendChild(item);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+      const currentLogs = consoleOutput.children.length;
+      logCount.textContent = `${currentLogs} logs`;
+    }
+
+    function clearConsole() {
+      const consoleOutput = document.getElementById('console-output');
+      consoleOutput.innerHTML = '';
+      document.getElementById('log-count').textContent = '0 logs';
+    }
+
+    function reloadPreview() {
+      runCode();
+    }
+
+    /* Storage Provider Logic */
+    function saveToStorage() {
+      if (storageMode === 'local') {
+        localStorage.setItem('seeti_studio_files', JSON.stringify(files));
+      } else {
+        // Cloud Replica Storage
+        localStorage.setItem('seeti_studio_cloud_files', JSON.stringify(files));
+      }
+    }
+
+    function loadSavedWorkspace() {
+      const localData = localStorage.getItem('seeti_studio_files');
+      if (localData) {
+        try { files = JSON.parse(localData); } catch(e) {}
+      }
+    }
+
+    function setStorageMode(mode) {
+      storageMode = mode;
+      document.getElementById('storage-label').textContent = mode === 'local' ? 'Local' : 'Cloud';
+      document.getElementById('storage-dot').className = `w-2 h-2 rounded-full ${mode === 'local' ? 'bg-emerald-400' : 'bg-indigo-400'}`;
+      
+      const localCard = document.getElementById('mode-card-local');
+      const cloudCard = document.getElementById('mode-card-cloud');
+
+      if (mode === 'local') {
+        localCard.className = "p-3 border rounded-xl cursor-pointer transition bg-slate-800 border-emerald-500/50 space-y-1";
+        cloudCard.className = "p-3 border rounded-xl cursor-pointer transition bg-slate-950 border-slate-800 hover:border-slate-700 space-y-1";
+      } else {
+        cloudCard.className = "p-3 border rounded-xl cursor-pointer transition bg-slate-800 border-indigo-500/50 space-y-1";
+        localCard.className = "p-3 border rounded-xl cursor-pointer transition bg-slate-950 border-slate-800 hover:border-slate-700 space-y-1";
+      }
+      saveToStorage();
+    }
+
+    /* Modal / UI Toggle Functions */
+    function toggleSidebar(show) {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      if (show) {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    document.getElementById('menu-btn').addEventListener('click', () => {
+      const sidebar = document.getElementById('sidebar');
+      const isHidden = sidebar.classList.contains('-translate-x-full');
+      toggleSidebar(isHidden);
+    });
+
+    function toggleOverflowMenu() {
+      const menu = document.getElementById('overflow-menu');
+      menu.classList.toggle('hidden');
+    }
+
+    function toggleAIPanel(show) {
+      const panel = document.getElementById('ai-panel');
+      if (show === undefined) {
+        panel.classList.toggle('hidden');
+      } else if (show) {
+        panel.classList.remove('hidden');
+      } else {
+        panel.classList.add('hidden');
+      }
+    }
+
+    function openStorageHub() {
+      document.getElementById('storage-modal').classList.remove('hidden');
+    }
+
+    function closeStorageHub() {
+      document.getElementById('storage-modal').classList.add('hidden');
+    }
+
+    /* Render Files & Tabs */
+    function renderFileList() {
+      const container = document.getElementById('file-list');
+      container.innerHTML = '';
+      Object.keys(files).forEach(filename => {
+        const file = files[filename];
+        const isActive = filename === activeFile;
+        const div = document.createElement('div');
+        div.className = `flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer ${
+          isActive ? 'bg-emerald-500/10 text-emerald-400 font-medium border border-emerald-500/20' : 'text-slate-300 hover:bg-slate-800'
+        }`;
+        div.onclick = () => { setActiveFile(filename); toggleSidebar(false); };
+        div.innerHTML = `
+          <div class="flex items-center space-x-2 truncate">
+            <i class="fa-solid ${getFileIcon(filename)} text-xs"></i>
+            <span class="truncate">${filename}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('tabs-header');
+      container.innerHTML = '';
+      Object.keys(files).forEach(filename => {
+        const isActive = filename === activeFile;
+        const btn = document.createElement('button');
+        btn.className = `px-3 py-1.5 rounded-t-lg text-xs flex items-center space-x-2 shrink-0 border-b-2 ${
+          isActive ? 'bg-slate-950 text-emerald-400 border-emerald-500 font-medium' : 'bg-slate-900 text-slate-400 border-transparent hover:text-slate-200'
+        }`;
+        btn.onclick = () => setActiveFile(filename);
+        btn.innerHTML = `
+          <i class="fa-solid ${getFileIcon(filename)} text-2xs"></i>
+          <span>${filename}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function getFileIcon(filename) {
+      if (filename.endsWith('.html')) return 'fa-code text-orange-400';
+      if (filename.endsWith('.css')) return 'fa-hashtag text-blue-400';
+      if (filename.endsWith('.js')) return 'fa-brands fa-js text-yellow-400';
+      return 'fa-file text-slate-400';
+    }
+
+    function createNewFile() {
+      const name = prompt('Enter new filename (e.g. app.js or style.css):');
+      if (!name) return;
+      if (files[name]) { alert('File already exists'); return; }
+      files[name] = { name, type: 'js', content: '' };
+      setActiveFile(name);
+      saveToStorage();
+    }
+
+    function formatActiveFile() {
+      if (!editorInstance) return;
+      const totalLines = editorInstance.lineCount();
+      editorInstance.autoFormatRange({line: 0, ch: 0}, {line: totalLines, ch: 0});
+    }
+
+    /* AI Copilot Prompt Handler */
+    function handleAISubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('ai-input');
+      const promptText = input.value.trim();
+      if (!promptText) return;
+
+      appendAIMessage('user', promptText);
+      input.value = '';
+
+      setTimeout(() => {
+        const response = `Here is a suggested snippet for "${promptText}":\n\n\`\`\`javascript\n// Auto-generated helper\nconsole.log("AI executed prompt: ${promptText}");\n\`\`\``;
+        appendAIMessage('ai', response);
+      }, 600);
+    }
+
+    function appendAIMessage(sender, text) {
+      const container = document.getElementById('ai-messages');
+      const msg = document.createElement('div');
+      msg.className = `p-3 rounded-xl text-xs ${
+        sender === 'user' ? 'bg-slate-800 text-slate-100 ml-4' : 'bg-indigo-950/50 border border-indigo-800/40 text-slate-200 mr-4'
+      }`;
+      msg.textContent = text;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    /* Project Export Logic */
+    function exportProject() {
+      const zip = new JSZip();
+      Object.keys(files).forEach(filename => {
+        zip.file(filename, files[filename].content);
+      });
+      zip.generateAsync({ type: 'blob' }).then(content => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(content);
+        a.download = 'Seeti_Studio_Project.zip';
+        a.click();
+      });
+    }
+
+    /* PWA Support */
+    function setupPWA() {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+      });
+    }
+
+    function installPWA() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+      } else {
+        alert('App installation prompt ready or app already installed.');
+      }
+    }
+  </script>
+</body>
+</html>
