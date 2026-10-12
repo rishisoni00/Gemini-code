@@ -6,7 +6,7 @@
   <title>Seeti Code Studio - Mobile IDE</title>
 
   <!-- PWA Manifest -->
-  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Seeti%20Code%20Studio%22,%22short_name%22:%22SeetiStudio%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f172a%22,%22theme_color%22:%22%230f172a%22}">
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Seeti%20Code%20Studio%22,%22short_name%22:%22SeetiStudio%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f172a%22,%22theme_color%22:%22%2322c55e%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%253Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 192 192%27%253E%253Crect fill=%27%2322c55e%27 width=%27192%27 height=%27192%27/%253E%253Ctext x=%2750%25%27 y=%2750%25%27 font-size=%2780%27 fill=%27%230f172a%27 text-anchor=%27middle%27 dominant-baseline=%27middle%27 font-weight=%27bold%27%253E⚡%253C/text%253E%253C/svg%253E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%22}]}">
   
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -64,6 +64,21 @@
     .pb-safe {
       padding-bottom: env(safe-area-inset-bottom, 12px);
     }
+
+    /* PWA Install Button Tooltip */
+    #pwa-install-btn {
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    #pwa-install-btn:hover {
+      background-color: #334155;
+      transform: scale(1.1);
+    }
+
+    #pwa-install-btn[data-hidden="true"] {
+      display: none;
+    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 h-screen w-screen overflow-hidden flex flex-col font-sans select-none">
@@ -83,7 +98,7 @@
       </div>
 
       <!-- Storage Indicator Switcher Badge -->
-      <button id="storage-mode-btn" onclick="openStorageHub()" class="flex items-center space-x-1.5 px-2 py-1 rounded-full text-xs font-medium border bg-slate-800 border-slate-700 text-slate-300 hover:border-emerald-500/50 transition">
+      <button id="storage-mode-btn" onclick="openStorageHub()" class="flex items-center space-x-1.5 px-2 py-1 rounded-full text-xs font-medium border bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-600 hover:bg-slate-700 transition hidden sm:flex">
         <span id="storage-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
         <span id="storage-label" class="hidden xs:inline">Local</span>
       </button>
@@ -91,14 +106,19 @@
 
     <!-- Right Header Action Controls -->
     <div class="flex items-center space-x-1.5">
+      <!-- PWA Install Button (Icon Only) -->
+      <button id="pwa-install-btn" onclick="installPWA(); event.stopPropagation()" class="p-2 text-slate-400 hover:text-purple-400 rounded-lg hover:bg-slate-800 transition" title="Install App as PWA" data-hidden="true">
+        <i class="fa-solid fa-download text-lg"></i>
+      </button>
+
       <!-- Run Button -->
-      <button onclick="runCode()" class="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-medium text-xs shadow-lg shadow-emerald-900/30 transition active:scale-95">
+      <button onclick="runCode()" class="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg font-medium text-xs shadow-lg shadow-emerald-900/30 transition">
         <i class="fa-solid fa-play text-xs"></i>
         <span>Run</span>
       </button>
 
       <!-- AI Copilot Button -->
-      <button onclick="toggleAIPanel()" class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg font-medium text-xs shadow-lg shadow-indigo-900/30 transition active:scale-95">
+      <button onclick="toggleAIPanel()" class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg font-medium text-xs shadow-lg shadow-indigo-900/30 transition">
         <i class="fa-solid fa-wand-magic-sparkles text-xs"></i>
         <span class="hidden sm:inline">AI</span>
       </button>
@@ -137,18 +157,13 @@
       <i class="fa-solid fa-gear w-4 text-amber-400"></i>
       <span>Settings</span>
     </button>
-    <div class="border-t border-slate-800 my-1"></div>
-    <button id="pwa-install-menu-btn" onclick="installPWA(); toggleOverflowMenu()" class="w-full text-left px-4 py-2.5 text-xs text-slate-300 hover:bg-slate-800 flex items-center space-x-2">
-      <i class="fa-solid fa-mobile-screen-button w-4 text-purple-400"></i>
-      <span>Install App (PWA)</span>
-    </button>
   </div>
 
   <!-- ==================== MAIN WORKSPACE ==================== -->
   <div class="flex-1 flex overflow-hidden relative">
 
     <!-- FILE EXPLORER SIDEBAR OVERLAY / DRAWER -->
-    <aside id="sidebar" class="absolute inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col">
+    <aside id="sidebar" class="absolute inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col overflow-hidden">
       <!-- Sidebar Header -->
       <div class="p-3 border-b border-slate-800 flex items-center justify-between">
         <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Workspace Files</span>
@@ -166,9 +181,9 @@
 
       <!-- Sidebar Footer (PWA & System Status) -->
       <div class="p-3 border-t border-slate-800 bg-slate-950/50 space-y-2">
-        <button id="sidebar-pwa-btn" onclick="installPWA()" class="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg flex items-center justify-center space-x-2 border border-slate-700 transition">
+        <button id="sidebar-pwa-btn" onclick="installPWA()" class="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs rounded-lg flex items-center justify-center space-x-2 border border-slate-700 transition" data-hidden="true">
           <i class="fa-solid fa-download text-emerald-400"></i>
-          <span>Install Native App</span>
+          <span>Install App</span>
         </button>
       </div>
     </aside>
@@ -371,12 +386,12 @@
       'index.html': {
         name: 'index.html',
         type: 'html',
-        content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>Seeti Studio</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <div class="container">\n    <h1>⚡ Welcome to Seeti Code Studio</h1>\n    <p>Mobile-Optimized IDE & Live Web Sandbox</p>\n    <button id="btn">Click Me!</button>\n  </div>\n  <script src="script.js"><\/script>\n</body>\n</html>`
+        content: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>Seeti Studio</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <div class="container">\n    <h1>🎉 Welcome to Seeti Code Studio</h1>\n    <p>Start coding your next amazing project!</p>\n    <button id="btn">Click Me</button>\n  </div>\n</body>\n</html>`
       },
       'style.css': {
         name: 'style.css',
         type: 'css',
-        content: `body {\n  background: #0f172a;\n  color: #f8fafc;\n  font-family: system-ui, sans-serif;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  margin: 0;\n}\n.container {\n  text-align: center;\n  padding: 2rem;\n  background: #1e293b;\n  border-radius: 12px;\n  border: 1px solid #334155;\n}\nh1 { color: #22c55e; margin-top: 0; }\nbutton {\n  background: #22c55e;\n  color: white;\n  border: none;\n  padding: 8px 16px;\n  border-radius: 6px;\n  cursor: pointer;\n}`
+        content: `body {\n  background: #0f172a;\n  color: #f8fafc;\n  font-family: system-ui, sans-serif;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n  min-height: 100vh;\n  margin: 0;\n}\n\n.container {\n  text-align: center;\n  padding: 40px;\n  background: #1e293b;\n  border-radius: 12px;\n  border: 1px solid #334155;\n}\n\nh1 {\n  margin: 0 0 10px;\n  color: #22c55e;\n}\n\nbutton {\n  background: #22c55e;\n  border: none;\n  padding: 10px 20px;\n  border-radius: 6px;\n  cursor: pointer;\n  font-weight: 600;\n  transition: all 0.3s;\n}\n\nbutton:hover {\n  background: #16a34a;\n}`
       },
       'script.js': {
         name: 'script.js',
@@ -538,7 +553,7 @@
       item.className = `py-0.5 border-b border-slate-900 font-mono text-2xs ${
         type === 'error' ? 'text-red-400' : type === 'warn' ? 'text-amber-400' : 'text-slate-300'
       }`;
-      item.textContent = `[${new Date().toLocaleTimeString()}]${message}`;
+      item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
       
       consoleOutput.appendChild(item);
       consoleOutput.scrollTop = consoleOutput.scrollHeight;
@@ -743,16 +758,52 @@
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
+        
+        // Show PWA install button when prompt is available
+        const pwaBtn = document.getElementById('pwa-install-btn');
+        const sidebarPwaBtn = document.getElementById('sidebar-pwa-btn');
+        
+        if (pwaBtn) pwaBtn.setAttribute('data-hidden', 'false');
+        if (sidebarPwaBtn) sidebarPwaBtn.setAttribute('data-hidden', 'false');
+      });
+
+      window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+        
+        // Hide PWA install button after app is installed
+        const pwaBtn = document.getElementById('pwa-install-btn');
+        const sidebarPwaBtn = document.getElementById('sidebar-pwa-btn');
+        
+        if (pwaBtn) pwaBtn.setAttribute('data-hidden', 'true');
+        if (sidebarPwaBtn) sidebarPwaBtn.setAttribute('data-hidden', 'true');
       });
     }
 
     function installPWA() {
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('PWA installation accepted');
+          }
+          deferredPrompt = null;
+        });
       } else {
-        alert('App installation prompt ready or app already installed.');
+        alert('App is already installed or PWA installation is not available on this browser.');
       }
+    }
+
+    // Placeholder functions for modals (if needed)
+    function openSettingsModal() {
+      alert('Settings modal - to be implemented');
+    }
+    
+    function triggerCloudPush() {
+      console.log('Pushing to cloud...');
+    }
+    
+    function triggerCloudPull() {
+      console.log('Pulling from cloud...');
     }
   </script>
 </body>
